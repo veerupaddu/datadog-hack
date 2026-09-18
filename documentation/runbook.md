@@ -3,6 +3,12 @@
 ## Install
 
 ```bash
+./init.sh --setup   # venv + deps + .env + lint + tests
+```
+
+Or manually:
+
+```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 cp .env.example .env
@@ -11,7 +17,7 @@ cp .env.example .env
 ## Run
 
 ```bash
-uvicorn devprod.server:app --port 8000
+./init.sh           # or: uvicorn devprod.server:app --port 8000
 # open http://localhost:8000
 ```
 

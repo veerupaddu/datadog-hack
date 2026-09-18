@@ -11,17 +11,23 @@ Demo script: [`documentation/runbook.md`](documentation/runbook.md)
 ## Quick start
 
 ```bash
-python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
-cp .env.example .env          # optional: ElevenLabs keys
-uvicorn devprod.server:app --reload --port 8000
-# http://localhost:8000
+git clone https://github.com/veerupaddu/datadog-hack.git
+cd datadog-hack
+./init.sh                     # venv + deps + .env, then serves http://localhost:8000
 ```
 
-Headless run of all eight steps:
+`init.sh` also takes `--setup` (install, lint and test only) and `--demo` (headless run of
+all eight steps), and honours `PORT=9000 ./init.sh`. Add `ELEVENLABS_API_KEY` and
+`ELEVENLABS_AGENT_ID` to the generated `.env` for live voice.
+
+Manual equivalent:
 
 ```bash
-python -m devprod.cli demo --fault divide_by_zero_discount
+python -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+cp .env.example .env
+uvicorn devprod.server:app --port 8000
+python -m devprod.cli demo --fault divide_by_zero_discount   # headless
 ```
 
 ## Layout
