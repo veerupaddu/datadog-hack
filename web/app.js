@@ -176,7 +176,7 @@ async function startCall() {
   script.src = "https://unpkg.com/@elevenlabs/convai-widget-embed";
   script.async = true;
   document.body.appendChild(script);
-  say("Voice call starting — the agent has the incident context.");
+  say(`Voice call starting — ${session.agent_sync}.`);
 }
 
 /* ---------- wiring ---------- */

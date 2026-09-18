@@ -11,6 +11,11 @@ RESEARCHER_GUIDANCE = (
     "same depth but re-explain with a concrete example — never hand-wave."
 )
 
+FIRST_MESSAGE = (
+    "Hi {{developer_name}}, DevProd Copilot here. I'm looking at {{topic}}. "
+    "Let me walk you through what the logs say, then I'll diagnose the root cause with you."
+)
+
 SYSTEM_PROMPT = """You are DevProd Copilot, an incident co-pilot on a live voice call with
 {{developer_name}} about the service {{service_name}} (simulator run {{run_id}}).
 

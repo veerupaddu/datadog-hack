@@ -43,4 +43,5 @@ Paste each entry as a webhook tool on the agent, set `ELEVENLABS_API_KEY` and
 | `voice: mock` badge | keys missing, or the signed-URL call failed — see the `reason` field in `POST /api/voice/session` |
 | Tools time out | ElevenLabs calls from its cloud; the tunnel URL must be live and the base URL updated |
 | `Missing required dynamic variables in first message` | the named variable is absent from `session_payload()` in `elevenlabs_client.py` — add it there, not only in the prompt |
+| Agent speaks in the dashboard persona (wrong name/tone) | `sync_agent()` PATCHes `prompts.SYSTEM_PROMPT` + `FIRST_MESSAGE` onto the agent at call start; the transcript line "Voice call starting — …" shows whether it succeeded |
 | Agent narrates stale state | the browser pushes context from `/ws/events`; confirm the socket is open |
