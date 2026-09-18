@@ -1,7 +1,7 @@
 # Developer Productivity Simulator
 
 Break a service on purpose, let an ElevenLabs voice agent gather the logs, find the root
-cause, explain it out loud (in ELI5 or researcher depth, on request), get spoken approval,
+cause, explain it out loud (researcher depth, with a comfort check), get spoken approval,
 ship the fix as a PR and read back the generated documentation.
 
 Full plan: [`documentation/PLAN.md`](documentation/PLAN.md) ·

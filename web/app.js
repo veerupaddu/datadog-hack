@@ -1,5 +1,5 @@
 const el = (id) => document.getElementById(id);
-const state = { runId: null, mode: "default", voiceMode: "mock", speaking: true };
+const state = { runId: null, voiceMode: "mock", speaking: true };
 
 async function api(path, options = {}) {
   const res = await fetch(path, {
@@ -55,7 +55,7 @@ function renderRootCause(rc) {
   el("root-cause").className = "card";
   el("root-cause").innerHTML =
     `<b>${rc.error_type}</b> in <code>${rc.function}()</code> at <code>${rc.file}:${rc.line}</code>` +
-    `<br/><br/>${rc.headline}<br/><br/>${rc.explanations[state.mode] || rc.explanations.default}` +
+    `<br/><br/>${rc.headline}<br/><br/>${rc.explanations.researcher}` +
     `<br/><br/><small>${rc.evidence.join(" · ")} · confidence ${(rc.confidence * 100).toFixed(0)}%</small>`;
 }
 
@@ -84,17 +84,9 @@ function resetCard(id, text) {
   el(id).textContent = text;
 }
 
-function setModeButtons(mode) {
-  state.mode = mode;
-  document
-    .querySelectorAll("button.mode")
-    .forEach((b) => b.classList.toggle("active", b.dataset.mode === mode));
-}
-
 function render(runState) {
   if (state.runId && runState.run_id !== state.runId) return;
   state.runId = runState.run_id;
-  if (runState.explain_mode) setModeButtons(runState.explain_mode);
   el("run-id").textContent = runState.run_id;
   setStep(runState.step);
   renderRootCause(runState.root_cause);
@@ -169,7 +161,6 @@ onClick("btn-start", async () => {
   resetCard("root-cause", "Nothing diagnosed yet.");
   resetCard("fix-plan", "No plan yet.");
   resetCard("outcome", "Nothing shipped yet.");
-  setModeButtons("default");
   render(await post("/api/run/start", { scenario: "pricing" }));
 });
 onClick("btn-induce", async () =>
@@ -186,22 +177,11 @@ onClick("btn-call", startCall);
 onClick("btn-ack-yes", () =>
   post("/api/voice/ack", { run_id: state.runId, understood: true, topic: el("step").textContent }));
 onClick("btn-ack-no", async () => {
-  const res = await post("/api/voice/ack", { run_id: state.runId, understood: false, topic: "root cause" });
+  const res = await post("/api/voice/ack", { run_id: state.runId, understood: false, topic: "error logs" });
   if (res.explanation) {
-    setModeButtons("eli5");
     say(res.explanation);
     render(await api(`/api/run/state?run_id=${state.runId}`));
   }
-});
-
-document.querySelectorAll("button.mode").forEach((btn) => {
-  onClick(btn, async () => {
-    setModeButtons(btn.dataset.mode);
-    if (!state.runId) return;
-    const res = await post("/api/voice/mode", { run_id: state.runId, mode: state.mode });
-    if (res.explanation) say(res.explanation);
-    render(await api(`/api/run/state?run_id=${state.runId}`));
-  });
 });
 
 init();

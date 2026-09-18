@@ -40,11 +40,6 @@ class ApproveBody(BaseModel):
     note: str = ""
 
 
-class ModeBody(BaseModel):
-    run_id: str
-    mode: str
-
-
 class AckBody(BaseModel):
     run_id: str
     understood: bool
@@ -129,10 +124,10 @@ def voice_session(body: RunBody) -> dict:
     return elevenlabs_client.session_payload(body.run_id, state.step, state.explain_mode)
 
 
-@app.post("/api/voice/mode")
-def voice_mode(body: ModeBody) -> dict:
+@app.post("/api/voice/explain-again")
+def voice_explain_again(body: RunBody) -> dict:
     _state(body.run_id)
-    return orchestrator.set_mode(body.run_id, body.mode)
+    return orchestrator.explain_again(body.run_id)
 
 
 @app.post("/api/voice/ack")

@@ -32,8 +32,8 @@ and the reloader would restart the process and drop the in-memory runs mid-flow.
    service 500s; the timeline shows the failing request.
 3. **Collect + diagnose** — *Collect logs* then *Diagnose*. The root cause card shows file,
    line, failing expression, evidence and confidence.
-4. **Talk it through** — click *Start voice call*. Ask: "explain that like I'm five" →
-   the agent switches to ELI5. Ask: "what else could break?" → researcher mode.
+4. **Talk it through** — click *Start voice call*. The researcher agent opens on the run's
+   error logs; *I'm lost* (or saying so) re-explains it with a concrete example.
 5. **Approve** — say "yes, go ahead". The patch is applied, tests run, PR link appears.
 6. **Docs** — the incident doc is written to `documentation/incidents/<run_id>.md`; the
    agent reads out the summary.

@@ -4,20 +4,28 @@ from __future__ import annotations
 
 import httpx
 
+from ..analysis import log_collector
 from ..config import settings
 from . import prompts
 
 SIGNED_URL_ENDPOINT = "https://api.elevenlabs.io/v1/convai/conversation/get-signed-url"
 
 
-def session_payload(run_id: str, current_step: str, explain_mode: str = "default") -> dict:
-    """What the browser needs to start (or fake) a call."""
+def session_payload(
+    run_id: str, current_step: str, explain_mode: str = prompts.EXPLAIN_MODE
+) -> dict:
+    """What the browser needs to start (or fake) a call.
+
+    Every variable the agent's first message can reference must be present, or the
+    conversation is rejected with "Missing required dynamic variables in first message".
+    """
     variables = {
         "run_id": run_id,
         "developer_name": settings.developer_name,
         "service_name": "orders-service",
         "explain_mode": explain_mode,
         "current_step": current_step,
+        "topic": log_collector.topic(log_collector.collect(run_id)),
     }
     if settings.voice_mode == "mock":
         return {

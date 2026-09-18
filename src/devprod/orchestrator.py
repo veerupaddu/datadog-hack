@@ -28,7 +28,7 @@ class StepError(RuntimeError):
 class RunState:
     run_id: str
     step: str = "idle"
-    explain_mode: str = "default"
+    explain_mode: str = "researcher"
     fault_id: str | None = None
     baseline: dict | None = None
     failing_status: int | None = None
@@ -206,13 +206,13 @@ class Orchestrator:
         return state
 
     # -- conversation -----------------------------------------------------
-    def set_mode(self, run_id: str, mode: str) -> dict:
+    def explain_again(self, run_id: str) -> dict:
+        """Re-state the current root cause; the agent has a single researcher register."""
         state = self.get(run_id)
-        state.explain_mode = mode
-        explanation = state.root_cause.explain(mode) if state.root_cause else ""
-        self._emit(state, state.step, f"Switching to {mode} mode.", explain_mode=mode,
+        explanation = state.root_cause.explain() if state.root_cause else ""
+        self._emit(state, state.step, explanation or "Nothing diagnosed yet.",
                    explanation=explanation)
-        return {"mode": mode, "explanation": explanation}
+        return {"mode": state.explain_mode, "explanation": explanation}
 
     def acknowledge(self, run_id: str, understood: bool, topic: str = "") -> dict:
         state = self.get(run_id)
@@ -222,8 +222,8 @@ class Orchestrator:
             "topic": topic,
         }
         state.acknowledgements.append(ack)
-        if not understood and state.explain_mode != "eli5":
-            return {"ack": ack, **self.set_mode(run_id, "eli5")}
+        if not understood:
+            return {"ack": ack, **self.explain_again(run_id)}
         self._emit(state, state.step, "Comfort check recorded.", ack=ack)
         return {"ack": ack}
 

@@ -1,6 +1,6 @@
 ---
 name: elevenlabs-voice-agent
-description: Configure or debug the ElevenLabs conversational agent that narrates the simulator (server tools, dynamic variables, signed URLs, ELI5/researcher modes). Use when wiring voice into this repo.
+description: Configure or debug the ElevenLabs conversational agent that narrates the simulator (server tools, dynamic variables, signed URLs, researcher persona). Use when wiring voice into this repo.
 ---
 
 # ElevenLabs agent for the simulator
@@ -9,7 +9,7 @@ description: Configure or debug the ElevenLabs conversational agent that narrate
 
 | Concern | File |
 |---------|------|
-| System prompt + mode guidance | `src/devprod/voice/prompts.py` |
+| System prompt + researcher guidance | `src/devprod/voice/prompts.py` |
 | Server tool schemas | `src/devprod/voice/agent_tools.py` |
 | Signed URL / session minting | `src/devprod/voice/elevenlabs_client.py` |
 | Browser call start | `web/app.js::startCall` |
@@ -31,8 +31,10 @@ Paste each entry as a webhook tool on the agent, set `ELEVENLABS_API_KEY` and
   tool result.
 - `approve_fix` requires an explicit spoken yes.
 - After each explanation: comfort check → `confirm_understanding`. A `false` answer
-  automatically flips the run to `eli5` (`Orchestrator.acknowledge`).
-- Three registers only: `default`, `eli5`, `researcher` (`prompts.EXPLAIN_MODES`).
+  re-explains the same root cause at the same depth (`Orchestrator.explain_again`).
+- One register only: researcher (`prompts.EXPLAIN_MODE`).
+- Every variable the agent's first message uses must be in `session_payload()`'s
+  `dynamic_variables` — including `topic`, which is always the run's error logs.
 
 ## Debugging
 
@@ -40,4 +42,5 @@ Paste each entry as a webhook tool on the agent, set `ELEVENLABS_API_KEY` and
 |---------|-------|
 | `voice: mock` badge | keys missing, or the signed-URL call failed — see the `reason` field in `POST /api/voice/session` |
 | Tools time out | ElevenLabs calls from its cloud; the tunnel URL must be live and the base URL updated |
+| `Missing required dynamic variables in first message` | the named variable is absent from `session_payload()` in `elevenlabs_client.py` — add it there, not only in the prompt |
 | Agent narrates stale state | the browser pushes context from `/ws/events`; confirm the socket is open |

@@ -20,8 +20,7 @@ def test_induce_and_diagnose(fault):
     assert state.root_cause.confidence > 0.5
     assert state.fix_plan is not None
     assert "sample_app" in state.fix_plan.patch.file
-    for mode in ("default", "eli5", "researcher"):
-        assert state.root_cause.explain(mode)
+    assert state.root_cause.explain()
 
 
 def test_approve_patches_and_documents():
@@ -61,11 +60,25 @@ def test_out_of_order_approve_returns_409():
         assert "fix plan" in response.json()["detail"]
 
 
-def test_lost_developer_switches_to_eli5():
+def test_lost_developer_gets_the_same_register_again():
     orch = Orchestrator()
     state = orch.start()
     orch.induce(state.run_id, "missing_currency_key")
     orch.diagnose(state.run_id)
-    result = orch.acknowledge(state.run_id, understood=False, topic="root cause")
-    assert state.explain_mode == "eli5"
-    assert result["explanation"] == state.root_cause.explain("eli5")
+    result = orch.acknowledge(state.run_id, understood=False, topic="error logs")
+    assert state.explain_mode == "researcher"
+    assert result["explanation"] == state.root_cause.explain()
+
+
+def test_voice_session_always_supplies_the_topic_variable():
+    with TestClient(server.app) as client:
+        run_id = client.post("/api/run/start", json={"scenario": "pricing"}).json()["run_id"]
+        before = client.post("/api/voice/session", json={"run_id": run_id}).json()
+        assert "error logs" in before["dynamic_variables"]["topic"]
+
+        client.post(
+            "/api/run/induce", json={"run_id": run_id, "fault": "divide_by_zero_discount"}
+        )
+        after = client.post("/api/voice/session", json={"run_id": run_id}).json()
+        assert "ZeroDivisionError" in after["dynamic_variables"]["topic"]
+        assert after["dynamic_variables"]["explain_mode"] == "researcher"
