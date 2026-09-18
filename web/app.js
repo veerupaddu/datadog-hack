@@ -158,38 +158,44 @@ async function init() {
   connectEvents();
 }
 
-el("btn-start").onclick = async () => {
+// api() already reports failures in the transcript; swallow so clicks never reject.
+const onClick = (target, handler) => {
+  const node = typeof target === "string" ? el(target) : target;
+  node.onclick = () => Promise.resolve(handler()).catch(() => {});
+};
+
+onClick("btn-start", async () => {
   state.runId = null;
   resetCard("root-cause", "Nothing diagnosed yet.");
   resetCard("fix-plan", "No plan yet.");
   resetCard("outcome", "Nothing shipped yet.");
   setModeButtons("default");
   render(await post("/api/run/start", { scenario: "pricing" }));
-};
-el("btn-induce").onclick = async () =>
-  render(await post("/api/run/induce", { run_id: state.runId, fault: el("fault").value }));
-el("btn-logs").onclick = async () => {
+});
+onClick("btn-induce", async () =>
+  render(await post("/api/run/induce", { run_id: state.runId, fault: el("fault").value })));
+onClick("btn-logs", async () => {
   const { evidence } = await api(`/api/run/logs?run_id=${state.runId}`);
   say(`${evidence.error_count} error lines out of ${evidence.entry_count}.`);
-};
-el("btn-diagnose").onclick = async () =>
-  render(await post("/api/run/diagnose", { run_id: state.runId }));
-el("btn-approve").onclick = async () =>
-  render(await post("/api/run/approve", { run_id: state.runId, approved: true, note: "approved in UI" }));
-el("btn-call").onclick = startCall;
-el("btn-ack-yes").onclick = () =>
-  post("/api/voice/ack", { run_id: state.runId, understood: true, topic: el("step").textContent });
-el("btn-ack-no").onclick = async () => {
+});
+onClick("btn-diagnose", async () =>
+  render(await post("/api/run/diagnose", { run_id: state.runId })));
+onClick("btn-approve", async () =>
+  render(await post("/api/run/approve", { run_id: state.runId, approved: true, note: "approved in UI" })));
+onClick("btn-call", startCall);
+onClick("btn-ack-yes", () =>
+  post("/api/voice/ack", { run_id: state.runId, understood: true, topic: el("step").textContent }));
+onClick("btn-ack-no", async () => {
   const res = await post("/api/voice/ack", { run_id: state.runId, understood: false, topic: "root cause" });
   if (res.explanation) {
     setModeButtons("eli5");
     say(res.explanation);
     render(await api(`/api/run/state?run_id=${state.runId}`));
   }
-};
+});
 
 document.querySelectorAll("button.mode").forEach((btn) => {
-  btn.onclick = async () => {
+  onClick(btn, async () => {
     setModeButtons(btn.dataset.mode);
     if (!state.runId) return;
     const res = await post("/api/voice/mode", { run_id: state.runId, mode: state.mode });
