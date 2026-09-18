@@ -50,7 +50,7 @@ def open_pr(plan: FixPlan, root_cause_headline: str, run_id: str) -> dict:
             "branch": branch,
             "url": f"https://example.invalid/pull/{abs(hash(branch)) % 900 + 100}",
             "body": body,
-            "note": "set DEVPROD_ENABLE_PR=1 with a configured git remote to open a real PR",
+            "note": "DEVPROD_ENABLE_PR=0 in .env — remove it and restart ./init.sh for a real PR",
         }
 
     origin_branch = _current_branch()

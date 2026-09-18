@@ -60,7 +60,11 @@ def _step_error(request: Request, exc: StepError) -> JSONResponse:
 
 @app.get("/api/faults")
 def list_faults() -> dict:
-    return {"faults": faults.catalog(), "voice_mode": settings.voice_mode}
+    return {
+        "faults": faults.catalog(),
+        "voice_mode": settings.voice_mode,
+        "pr_mode": "real" if settings.enable_pr else "dry-run",
+    }
 
 
 @app.post("/api/run/start")

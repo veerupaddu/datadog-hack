@@ -113,6 +113,7 @@ function renderOutcome(runState) {
   el("outcome").innerHTML =
     (pr.url ? `PR (${pr.mode}): <a href="${pr.url}" target="_blank" rel="noreferrer">${pr.url}</a><br/>` : "") +
     (pr.error ? `<span class="log-error">PR step: ${escapeHtml(pr.error)}</span><br/>` : "") +
+    (pr.note ? `<span class="log-error">${escapeHtml(pr.note)}</span><br/>` : "") +
     (runState.verify_status ? `Replay after fix: <span class="ok">${runState.verify_status}</span><br/>` : "") +
     (runState.doc_path ? `Doc: <code>${runState.doc_path}</code><br/><br/>` : "") +
     (runState.summary || "");
@@ -256,9 +257,14 @@ async function startCall() {
 /* ---------- wiring ---------- */
 
 async function init() {
-  const { faults, voice_mode } = await api("/api/faults");
+  const { faults, voice_mode, pr_mode } = await api("/api/faults");
   state.voiceMode = voice_mode;
   el("voice-mode").textContent = `voice: ${voice_mode}`;
+  el("pr-mode").textContent = `pr: ${pr_mode}`;
+  el("pr-mode").title =
+    pr_mode === "real"
+      ? "Approval pushes a branch and opens a GitHub PR"
+      : "DEVPROD_ENABLE_PR=0 in .env — remove it (or set 1) and restart ./init.sh";
   el("fault").innerHTML = faults
     .map((f) => `<option value="${f.id}">${f.title}</option>`)
     .join("");
