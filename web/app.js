@@ -1,5 +1,7 @@
 const el = (id) => document.getElementById(id);
-const state = { runId: null, voiceMode: "mock", speaking: true, inCall: false };
+const state = {
+  runId: null, voiceMode: "mock", speaking: true, inCall: false, conversation: null, lastContextStep: null,
+};
 const STEPS = ["idle", "running", "failing", "collected", "diagnosed", "plan_ready", "patched",
   "pr_open", "documented", "summarized"];
 const reached = (step, target) => STEPS.indexOf(step) >= STEPS.indexOf(target);
@@ -31,7 +33,7 @@ function setStep(step) {
   el("step").textContent = step;
   el("btn-induce").disabled = !state.runId || !reached(step, "running");
   el("btn-logs").disabled = !reached(step, "failing");
-  el("btn-call").disabled = !reached(step, "collected") || state.inCall;
+  el("btn-call").disabled = state.conversation ? false : !reached(step, "collected") || state.inCall;
   el("btn-diagnose").disabled = !state.inCall || !reached(step, "collected") || reached(step, "diagnosed");
   el("btn-approve").disabled = !["plan_ready", "diagnosed"].includes(step);
   const feedbackOff = !state.inCall || !reached(step, "diagnosed");
@@ -130,6 +132,54 @@ function render(runState) {
   renderRootCause(runState.root_cause);
   renderPlan(runState.fix_plan, runState.root_cause);
   renderOutcome(runState);
+  pushContext(runState);
+}
+
+/* ---------- agent context (live call) ---------- */
+
+const CONTEXT_STEPS = ["collected", "diagnosed", "plan_ready", "patched", "pr_open", "documented", "summarized"];
+
+function contextFor(runState) {
+  const ev = runState.evidence;
+  const rc = runState.root_cause;
+  const plan = runState.fix_plan;
+  const pr = runState.pr;
+  const parts = [`Simulator run ${runState.run_id} is now at step "${runState.step}".`];
+  if (ev && reached(runState.step, "collected")) {
+    const errors = ev.entries.filter((e) => e.level === "ERROR")
+      .map((e) => `${e.error_type}: ${e.error}`).join("; ");
+    parts.push(`ERROR LOGS (${ev.error_count} of ${ev.entry_count} lines): ${errors}`);
+    if (ev.traceback) parts.push(`TRACEBACK:\n${ev.traceback}`);
+  }
+  if (rc && reached(runState.step, "diagnosed")) {
+    parts.push(
+      `DIAGNOSIS: ${rc.error_type} in ${rc.function}() at ${rc.file}:${rc.line}. ${rc.headline} ` +
+      `${rc.explanations.researcher} Evidence: ${rc.evidence.join("; ")}. ` +
+      `Confidence ${(rc.confidence * 100).toFixed(0)}%.`,
+    );
+  }
+  if (plan && reached(runState.step, "plan_ready")) {
+    parts.push(`FIX PLAN: ${plan.title}. ${plan.summary} Steps: ${plan.steps.join(" ")} Risk: ${plan.risk}\nDIFF:\n${plan.diff}`);
+  }
+  if (runState.verify_status && reached(runState.step, "patched")) {
+    parts.push(`VERIFICATION: replayed failing request now returns ${runState.verify_status}.`);
+  }
+  if (pr && pr.url && reached(runState.step, "pr_open")) parts.push(`PULL REQUEST (${pr.mode}): ${pr.url}`);
+  if (runState.doc_path) parts.push(`DOCUMENTATION: ${runState.doc_path}`);
+  if (runState.summary) parts.push(`SUMMARY: ${runState.summary}`);
+  return parts.join("\n\n");
+}
+
+function pushContext(runState) {
+  if (!state.conversation || !CONTEXT_STEPS.includes(runState.step)) return;
+  if (state.lastContextStep === runState.step) return;
+  state.lastContextStep = runState.step;
+  try {
+    state.conversation.sendContextualUpdate(contextFor(runState));
+    say(`(context sent to agent: ${runState.step})`, "muted");
+  } catch (err) {
+    say(`Could not send context to the agent: ${err.message}`, "bad");
+  }
 }
 
 const escapeHtml = (s = "") =>
@@ -152,7 +202,19 @@ function connectEvents() {
 
 /* ---------- voice ---------- */
 
+async function endCall() {
+  const conversation = state.conversation;
+  state.conversation = null;
+  state.inCall = false;
+  state.lastContextStep = null;
+  el("btn-call").textContent = "Start voice call (sends logs)";
+  if (conversation) await conversation.endSession().catch(() => {});
+  say("Voice call ended.");
+  if (state.runId) render(await api(`/api/run/state?run_id=${state.runId}`));
+}
+
 async function startCall() {
+  if (state.conversation) return endCall();
   if (!state.runId) {
     say("Start a run first.", "bad");
     return;
@@ -168,16 +230,27 @@ async function startCall() {
     say(`Mock voice mode (${session.reason}). I'll narrate each step with browser speech.`);
     return;
   }
-  const widget = document.createElement("elevenlabs-convai");
-  widget.setAttribute("agent-id", session.agent_id);
-  widget.setAttribute("signed-url", session.signed_url);
-  widget.setAttribute("dynamic-variables", JSON.stringify(session.dynamic_variables));
-  document.body.appendChild(widget);
-  const script = document.createElement("script");
-  script.src = "https://unpkg.com/@elevenlabs/convai-widget-embed";
-  script.async = true;
-  document.body.appendChild(script);
   say(`Voice call starting — ${session.agent_sync}.`);
+  try {
+    const { Conversation } = await import("https://esm.sh/@elevenlabs/client@1.24.0");
+    state.conversation = await Conversation.startSession({
+      signedUrl: session.signed_url,
+      dynamicVariables: session.dynamic_variables,
+      onConnect: () => say("Agent connected — say hello."),
+      onDisconnect: () => { if (state.conversation) endCall(); },
+      onError: (message) => say(`Agent error: ${message}`, "bad"),
+      onMessage: ({ source, message }) =>
+        say(`${source === "ai" ? "Agent" : "You"}: ${message}`, source === "ai" ? "" : "muted"),
+    });
+    el("btn-call").textContent = "End voice call";
+    el("btn-call").disabled = false;
+    state.lastContextStep = null;
+    render(await api(`/api/run/state?run_id=${state.runId}`));
+  } catch (err) {
+    state.inCall = false;
+    say(`Could not start the ElevenLabs call: ${err.message || err}`, "bad");
+    render(await api(`/api/run/state?run_id=${state.runId}`));
+  }
 }
 
 /* ---------- wiring ---------- */
@@ -199,6 +272,7 @@ const onClick = (target, handler) => {
 };
 
 onClick("btn-start", async () => {
+  if (state.conversation) await endCall();
   state.runId = null;
   state.inCall = false;
   resetCard("logs", "No logs collected yet.");
