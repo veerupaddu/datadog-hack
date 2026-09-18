@@ -1,5 +1,8 @@
 const el = (id) => document.getElementById(id);
-const state = { runId: null, voiceMode: "mock", speaking: true };
+const state = { runId: null, voiceMode: "mock", speaking: true, inCall: false };
+const STEPS = ["idle", "running", "failing", "collected", "diagnosed", "plan_ready", "patched",
+  "pr_open", "documented", "summarized"];
+const reached = (step, target) => STEPS.indexOf(step) >= STEPS.indexOf(target);
 
 async function api(path, options = {}) {
   const res = await fetch(path, {
@@ -26,10 +29,14 @@ const post = (path, body) => api(path, { method: "POST", body: JSON.stringify(bo
 
 function setStep(step) {
   el("step").textContent = step;
-  el("btn-induce").disabled = !state.runId;
-  el("btn-logs").disabled = !state.runId;
-  el("btn-diagnose").disabled = !state.runId;
+  el("btn-induce").disabled = !state.runId || !reached(step, "running");
+  el("btn-logs").disabled = !reached(step, "failing");
+  el("btn-call").disabled = !reached(step, "collected") || state.inCall;
+  el("btn-diagnose").disabled = !state.inCall || !reached(step, "collected") || reached(step, "diagnosed");
   el("btn-approve").disabled = !["plan_ready", "diagnosed"].includes(step);
+  const feedbackOff = !state.inCall || !reached(step, "diagnosed");
+  el("btn-ack-yes").disabled = feedbackOff;
+  el("btn-ack-no").disabled = feedbackOff;
 }
 
 function timelineEntry(event) {
@@ -50,22 +57,51 @@ function say(text, cls = "") {
   }
 }
 
+function renderLogs(evidence) {
+  if (!evidence) return;
+  el("logs").className = "card scroll";
+  const lines = evidence.entries.map((e) => {
+    const cls = e.level === "ERROR" ? "log-error" : "";
+    const detail = e.error_type ? ` — ${e.error_type}: ${e.error || ""}` : "";
+    return `<div class="${cls}">[${e.level}] ${escapeHtml(e.message || e.event || "")}${escapeHtml(detail)}</div>`;
+  });
+  el("logs").innerHTML =
+    `<b>${evidence.error_count} error lines / ${evidence.entry_count} total</b><br/>` +
+    lines.join("") +
+    (evidence.traceback ? `<pre>${escapeHtml(evidence.traceback)}</pre>` : "");
+}
+
 function renderRootCause(rc) {
   if (!rc) return;
   el("root-cause").className = "card";
   el("root-cause").innerHTML =
-    `<b>${rc.error_type}</b> in <code>${rc.function}()</code> at <code>${rc.file}:${rc.line}</code>` +
+    `<b>${rc.error_type}</b> in <code>${rc.function}()</code> at ` +
+    `<span class="fix-point">${rc.file}:${rc.line}</span>` +
     `<br/><br/>${rc.headline}<br/><br/>${rc.explanations.researcher}` +
     `<br/><br/><small>${rc.evidence.join(" · ")} · confidence ${(rc.confidence * 100).toFixed(0)}%</small>`;
 }
 
-function renderPlan(plan) {
+function diffHtml(diff) {
+  return diff
+    .split("\n")
+    .map((line) => {
+      const text = escapeHtml(line);
+      if (line.startsWith("+") && !line.startsWith("+++")) return `<span class="fix-add">${text}</span>`;
+      if (line.startsWith("-") && !line.startsWith("---")) return `<span class="fix-del">${text}</span>`;
+      return text;
+    })
+    .join("\n");
+}
+
+function renderPlan(plan, rc) {
   if (!plan) return;
   el("fix-plan").className = "card";
+  const where = rc ? `<div>Fix point: <span class="fix-point">${rc.file}:${rc.line}</span> in <code>${rc.function}()</code></div><br/>` : "";
   el("fix-plan").innerHTML =
+    where +
     `<b>${plan.title}</b><br/>${plan.summary}<br/><br/>` +
     plan.steps.map((s) => `• ${s}`).join("<br/>") +
-    `<br/><br/>Risk: ${plan.risk}<pre>${escapeHtml(plan.diff)}</pre>`;
+    `<br/><br/>Risk: ${plan.risk}<pre>${diffHtml(plan.diff)}</pre>`;
 }
 
 function renderOutcome(runState) {
@@ -89,8 +125,9 @@ function render(runState) {
   state.runId = runState.run_id;
   el("run-id").textContent = runState.run_id;
   setStep(runState.step);
+  renderLogs(runState.evidence);
   renderRootCause(runState.root_cause);
-  renderPlan(runState.fix_plan);
+  renderPlan(runState.fix_plan, runState.root_cause);
   renderOutcome(runState);
 }
 
@@ -121,7 +158,10 @@ async function startCall() {
   }
   const session = await post("/api/voice/session", { run_id: state.runId });
   state.voiceMode = session.mode;
+  state.inCall = true;
   el("voice-mode").textContent = `voice: ${session.mode}`;
+  say(`Topic sent to the agent: ${session.dynamic_variables.topic}`);
+  render(await api(`/api/run/state?run_id=${state.runId}`));
   if (session.mode !== "live") {
     say(`Mock voice mode (${session.reason}). I'll narrate each step with browser speech.`);
     return;
@@ -158,6 +198,8 @@ const onClick = (target, handler) => {
 
 onClick("btn-start", async () => {
   state.runId = null;
+  state.inCall = false;
+  resetCard("logs", "No logs collected yet.");
   resetCard("root-cause", "Nothing diagnosed yet.");
   resetCard("fix-plan", "No plan yet.");
   resetCard("outcome", "Nothing shipped yet.");
@@ -167,7 +209,8 @@ onClick("btn-induce", async () =>
   render(await post("/api/run/induce", { run_id: state.runId, fault: el("fault").value })));
 onClick("btn-logs", async () => {
   const { evidence } = await api(`/api/run/logs?run_id=${state.runId}`);
-  say(`${evidence.error_count} error lines out of ${evidence.entry_count}.`);
+  say(`Log collector: ${evidence.error_count} error lines out of ${evidence.entry_count}.`);
+  render(await api(`/api/run/state?run_id=${state.runId}`));
 });
 onClick("btn-diagnose", async () =>
   render(await post("/api/run/diagnose", { run_id: state.runId })));

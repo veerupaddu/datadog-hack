@@ -54,6 +54,7 @@ class RunState:
             "baseline": self.baseline,
             "failing_status": self.failing_status,
             "verify_status": self.verify_status,
+            "evidence": self.evidence,
             "root_cause": self.root_cause.to_dict() if self.root_cause else None,
             "fix_plan": self.fix_plan.to_dict() if self.fix_plan else None,
             "patch_result": self.patch_result,
