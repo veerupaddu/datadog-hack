@@ -160,6 +160,7 @@ async function startCall() {
   state.voiceMode = session.mode;
   state.inCall = true;
   el("voice-mode").textContent = `voice: ${session.mode}`;
+  el("voice-mode").title = session.reason || "ElevenLabs agent connected";
   say(`Topic sent to the agent: ${session.dynamic_variables.topic}`);
   render(await api(`/api/run/state?run_id=${state.runId}`));
   if (session.mode !== "live") {
