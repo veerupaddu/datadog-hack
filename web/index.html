@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DevProd Simulator</title>
+<link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+<header>
+  <h1>Developer Productivity Simulator</h1>
+  <div class="status">
+    <span id="voice-mode" class="pill">voice: …</span>
+    <span id="run-id" class="pill">no run</span>
+    <span id="step" class="pill step">idle</span>
+  </div>
+</header>
+
+<main>
+  <section class="panel controls">
+    <h2>1 · Run the service</h2>
+    <button id="btn-start">Start run</button>
+
+    <h2>2 · Induce a failure</h2>
+    <select id="fault"></select>
+    <button id="btn-induce" disabled>Induce error</button>
+
+    <h2>3 · Investigate</h2>
+    <button id="btn-logs" disabled>Collect logs</button>
+    <button id="btn-diagnose" disabled>Diagnose</button>
+
+    <h2>4 · Talk it through</h2>
+    <button id="btn-call">Start voice call</button>
+    <div class="modes">
+      <button class="mode" data-mode="default">Normal</button>
+      <button class="mode" data-mode="eli5">ELI5</button>
+      <button class="mode" data-mode="researcher">Researcher</button>
+    </div>
+    <div class="acks">
+      <button id="btn-ack-yes">I follow</button>
+      <button id="btn-ack-no">I'm lost</button>
+    </div>
+
+    <h2>5 · Ship it</h2>
+    <button id="btn-approve" disabled class="primary">Approve fix &amp; open PR</button>
+  </section>
+
+  <section class="panel">
+    <h2>Root cause</h2>
+    <div id="root-cause" class="card muted">Nothing diagnosed yet.</div>
+    <h2>Fix plan</h2>
+    <div id="fix-plan" class="card muted">No plan yet.</div>
+    <h2>Pull request &amp; docs</h2>
+    <div id="outcome" class="card muted">Nothing shipped yet.</div>
+  </section>
+
+  <section class="panel">
+    <h2>Live timeline</h2>
+    <ol id="timeline"></ol>
+    <h2>Agent transcript</h2>
+    <div id="transcript" class="card scroll"></div>
+  </section>
+</main>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
