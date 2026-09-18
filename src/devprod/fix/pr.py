@@ -15,6 +15,19 @@ def _git(*args: str) -> subprocess.CompletedProcess:
     )
 
 
+def _current_branch() -> str:
+    return _git("rev-parse", "--abbrev-ref", "HEAD").stdout.strip() or "main"
+
+
+def _compare_url(base: str, branch: str) -> str:
+    """GitHub 'open a PR' page for the pushed branch, used when `gh` is unavailable."""
+    remote = _git("remote", "get-url", "origin").stdout.strip()
+    remote = remote.removesuffix(".git")
+    if remote.startswith("git@"):
+        remote = "https://" + remote[4:].replace(":", "/", 1)
+    return f"{remote}/compare/{base}...{branch}?expand=1"
+
+
 def _body(plan: FixPlan, root_cause_headline: str, run_id: str) -> str:
     return (
         f"## Summary\n\n{plan.title}. {plan.summary}\n\n"
@@ -37,35 +50,45 @@ def open_pr(plan: FixPlan, root_cause_headline: str, run_id: str) -> dict:
             "branch": branch,
             "url": f"https://example.invalid/pull/{abs(hash(branch)) % 900 + 100}",
             "body": body,
-            "note": "set DEVPROD_ENABLE_PR=1 with a configured git remote to open a real PR",
+            "note": "DEVPROD_ENABLE_PR=0 in .env — remove it and restart ./init.sh for a real PR",
         }
 
+    origin_branch = _current_branch()
+    base = settings.pr_base_branch or origin_branch
     _git("checkout", "-b", branch)
     _git("add", plan.patch.file)
     commit = _git("commit", "-m", f"fix: {plan.title}")
     push = _git("push", "-u", "origin", branch)
+    # Back to the demo branch: the fix lives on its own branch and the bug is back in the tree.
+    _git("checkout", origin_branch)
     if push.returncode != 0:
         return {"mode": "error", "branch": branch, "error": push.stderr.strip(), "body": body}
 
-    gh = subprocess.run(
-        [
-            "gh", "pr", "create",
-            "--base", settings.pr_base_branch,
-            "--head", branch,
-            "--title", f"fix: {plan.title}",
-            "--body", body,
-        ],
-        cwd=settings.repo_root,
-        capture_output=True,
-        text=True,
-        timeout=180,
-    )
-    url = gh.stdout.strip().splitlines()[-1] if gh.returncode == 0 and gh.stdout.strip() else ""
+    try:
+        gh = subprocess.run(
+            [
+                "gh", "pr", "create",
+                "--base", base,
+                "--head", branch,
+                "--title", f"fix: {plan.title}",
+                "--body", body,
+            ],
+            cwd=settings.repo_root,
+            capture_output=True,
+            text=True,
+            timeout=180,
+        )
+        ok = gh.returncode == 0 and bool(gh.stdout.strip())
+        url = gh.stdout.strip().splitlines()[-1] if ok else _compare_url(base, branch)
+        error = None if ok else gh.stderr.strip()
+    except FileNotFoundError:
+        url, error = _compare_url(base, branch), "gh CLI not installed; open the PR from the link"
     return {
         "mode": "live",
         "branch": branch,
+        "base": base,
         "url": url,
         "commit": commit.stdout.strip(),
-        "error": None if gh.returncode == 0 else gh.stderr.strip(),
+        "error": error,
         "body": body,
     }

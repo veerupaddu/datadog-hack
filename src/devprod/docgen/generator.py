@@ -31,19 +31,11 @@ def write_doc(state) -> Path:
         "",
         f"**{rc.error_type}** in `{rc.function}()` at `{rc.file}:{rc.line}`" if rc else "unknown",
         "",
-        (rc.explain("default") if rc else ""),
+        (rc.explain() if rc else ""),
         "",
         "### Evidence",
         "",
         *[f"- {line}" for line in (rc.evidence if rc else [])],
-        "",
-        "### In plain language",
-        "",
-        (rc.explain("eli5") if rc else ""),
-        "",
-        "### Deeper analysis",
-        "",
-        (rc.explain("researcher") if rc else ""),
         "",
         "## Fix",
         "",
@@ -78,6 +70,6 @@ def summarize(state) -> str:
         f"at line {rc.line}: {rc.headline}. "
         f"You approved the fix — {plan.summary if plan else 'no change'} — and the replayed "
         f"request now returns {state.verify_status}. "
-        f"The change is up for review at {pr_url}, and the full write-up including the plain "
-        f"language version is in documentation/incidents/{state.run_id}.md."
+        f"The change is up for review at {pr_url}, and the full write-up with the evidence "
+        f"is in documentation/incidents/{state.run_id}.md."
     )

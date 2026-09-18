@@ -92,19 +92,11 @@ TOOLS: list[dict] = [
         "parameters": {"type": "object", "properties": _RUN_ID, "required": ["run_id"]},
     },
     {
-        "name": "set_explain_mode",
-        "description": "Switch the explanation register to default, eli5 or researcher and get "
-        "the current step re-explained in that register.",
+        "name": "explain_again",
+        "description": "Re-explain the current root cause when the developer is lost.",
         "method": "POST",
-        "path": "/api/voice/mode",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                **_RUN_ID,
-                "mode": {"type": "string", "enum": ["default", "eli5", "researcher"]},
-            },
-            "required": ["run_id", "mode"],
-        },
+        "path": "/api/voice/explain-again",
+        "parameters": {"type": "object", "properties": _RUN_ID, "required": ["run_id"]},
     },
     {
         "name": "confirm_understanding",

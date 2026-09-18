@@ -20,7 +20,7 @@ python -m devprod.cli demo --fault divide_by_zero_discount
 python -m pytest -q
 ```
 
-Expect the timeline to reach `summarized`, a PR url (dry-run unless `DEVPROD_ENABLE_PR=1`)
+Expect the timeline to reach `summarized`, a real PR url (fake `example.invalid` link when `DEVPROD_ENABLE_PR=0`)
 and a doc under `documentation/incidents/`.
 
 ## Browser demo
@@ -30,7 +30,7 @@ uvicorn devprod.server:app --reload --port 8000
 ```
 
 Then: *Start run* → pick a fault → *Induce error* → *Collect logs* → *Diagnose* →
-*Start voice call* → ELI5 / Researcher buttons → *Approve fix & open PR*.
+*Start voice call* → *I follow* / *I'm lost* → *Approve fix & open PR*.
 
 ## Important
 
