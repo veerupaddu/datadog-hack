@@ -6,14 +6,14 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
 try:  # optional dependency, the app works without it
     from dotenv import load_dotenv
 
-    load_dotenv()
+    load_dotenv(REPO_ROOT / ".env")
 except Exception:  # pragma: no cover
     pass
-
-REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _flag(name: str, default: bool = False) -> bool:

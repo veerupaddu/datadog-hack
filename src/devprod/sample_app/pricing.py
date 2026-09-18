@@ -37,6 +37,8 @@ def to_usd(amount: float, currency: str) -> float:
 
 def gross_up(net_total: float, discount_rate: float) -> float:
     """Recover the pre-discount total from a discounted one."""
+    if discount_rate >= 1.0:
+        return net_total
     return round(net_total / (1.0 - discount_rate), 2)
 
 

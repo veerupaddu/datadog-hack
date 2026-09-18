@@ -25,30 +25,32 @@
     <select id="fault"></select>
     <button id="btn-induce" disabled>Induce error</button>
 
-    <h2>3 · Investigate</h2>
-    <button id="btn-logs" disabled>Collect logs</button>
-    <button id="btn-diagnose" disabled>Diagnose</button>
+    <h2>3 · Collect logs</h2>
+    <button id="btn-logs" disabled>Run log collector agent</button>
 
-    <h2>4 · Talk it through</h2>
-    <button id="btn-call">Start voice call</button>
-    <div class="modes">
-      <button class="mode" data-mode="default">Normal</button>
-      <button class="mode" data-mode="eli5">ELI5</button>
-      <button class="mode" data-mode="researcher">Researcher</button>
-    </div>
-    <div class="acks">
-      <button id="btn-ack-yes">I follow</button>
-      <button id="btn-ack-no">I'm lost</button>
-    </div>
+    <h2>4 · Start voice call</h2>
+    <button id="btn-call" disabled>Start voice call (sends logs)</button>
+    <p class="hint">Researcher agent — the error logs are its topic.</p>
 
-    <h2>5 · Ship it</h2>
+    <h2>5 · Diagnose in the call</h2>
+    <button id="btn-diagnose" disabled>Ask agent to diagnose</button>
+
+    <h2>6–8 · Fix, PR &amp; link</h2>
     <button id="btn-approve" disabled class="primary">Approve fix &amp; open PR</button>
+
+    <h2>9 · Feedback</h2>
+    <div class="acks">
+      <button id="btn-ack-yes" disabled>I follow</button>
+      <button id="btn-ack-no" disabled>I'm lost</button>
+    </div>
   </section>
 
   <section class="panel">
-    <h2>Root cause</h2>
+    <h2>Collected logs</h2>
+    <div id="logs" class="card muted scroll">No logs collected yet.</div>
+    <h2>Diagnosis (from the agent)</h2>
     <div id="root-cause" class="card muted">Nothing diagnosed yet.</div>
-    <h2>Fix plan</h2>
+    <h2>Fix point &amp; plan</h2>
     <div id="fix-plan" class="card muted">No plan yet.</div>
     <h2>Pull request &amp; docs</h2>
     <div id="outcome" class="card muted">Nothing shipped yet.</div>

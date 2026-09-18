@@ -30,7 +30,7 @@ uvicorn devprod.server:app --reload --port 8000
 ```
 
 Then: *Start run* → pick a fault → *Induce error* → *Collect logs* → *Diagnose* →
-*Start voice call* → ELI5 / Researcher buttons → *Approve fix & open PR*.
+*Start voice call* → *I follow* / *I'm lost* → *Approve fix & open PR*.
 
 ## Important
 
