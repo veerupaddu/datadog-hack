@@ -11,9 +11,12 @@ cp .env.example .env
 ## Run
 
 ```bash
-uvicorn devprod.server:app --reload --port 8000
+uvicorn devprod.server:app --port 8000
 # open http://localhost:8000
 ```
+
+Run without `--reload` when demoing: approving a fix edits `src/devprod/sample_app/`,
+and the reloader would restart the process and drop the in-memory runs mid-flow.
 
 ## Demo script (≈4 minutes)
 
@@ -45,3 +48,5 @@ Runs all 8 steps headless and prints the PR link + doc summary. Useful for CI sm
 | Agent tools 404 | Tunnel URL stale — re-run `cloudflared` and update the tool base URL |
 | PR step returns a fake link | `DEVPROD_ENABLE_PR` not `1`, or no git remote configured |
 | Patch step fails | `git status` in the repo is dirty on `src/devprod/sample_app/` |
+| Re-running the same fault does nothing | The previous approval already fixed it — `git checkout -- src/devprod/sample_app/pricing.py` |
+| Nothing is spoken in mock mode | The browser has no speech-synthesis voices installed; the transcript still shows every line |

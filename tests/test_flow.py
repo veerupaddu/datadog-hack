@@ -1,7 +1,9 @@
 import pytest
+from fastapi.testclient import TestClient
 
+from devprod import server
 from devprod.fix import patcher
-from devprod.orchestrator import Orchestrator
+from devprod.orchestrator import Orchestrator, StepError
 
 FAULTS = ["divide_by_zero_discount", "missing_currency_key", "coupon_retry_storm"]
 
@@ -36,6 +38,27 @@ def test_approve_patches_and_documents():
         assert state.step == "summarized"
     finally:
         patcher.revert(plan)
+
+
+def test_out_of_order_steps_raise_step_error():
+    orch = Orchestrator()
+    state = orch.start()
+    with pytest.raises(StepError):
+        orch.diagnose(state.run_id)
+    with pytest.raises(StepError):
+        orch.approve(state.run_id, approved=True)
+    assert state.step == "collected"
+
+
+def test_out_of_order_approve_returns_409():
+    with TestClient(server.app) as client:
+        run_id = client.post("/api/run/start", json={"scenario": "pricing"}).json()["run_id"]
+        assert client.post("/api/run/diagnose", json={"run_id": run_id}).status_code == 409
+        response = client.post(
+            "/api/run/approve", json={"run_id": run_id, "approved": True}
+        )
+        assert response.status_code == 409
+        assert "fix plan" in response.json()["detail"]
 
 
 def test_lost_developer_switches_to_eli5():

@@ -5,13 +5,13 @@ from __future__ import annotations
 import asyncio
 import json
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .config import settings
-from .orchestrator import orchestrator
+from .orchestrator import StepError, orchestrator
 from .simulator import faults
 from .voice import elevenlabs_client
 
@@ -56,6 +56,11 @@ def _state(run_id: str):
         return orchestrator.get(run_id)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.exception_handler(StepError)
+def _step_error(request: Request, exc: StepError) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
 
 
 @app.get("/api/faults")

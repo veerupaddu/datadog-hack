@@ -20,6 +20,10 @@ STEPS = [
 Listener = Callable[[dict], None]
 
 
+class StepError(RuntimeError):
+    """A step was requested before the run reached the state it needs."""
+
+
 @dataclass
 class RunState:
     run_id: str
@@ -144,6 +148,8 @@ class Orchestrator:
         state = self.get(run_id)
         if state.evidence is None:
             self.collect(run_id)
+        if not (state.evidence or {}).get("error_count"):
+            raise StepError("nothing has failed yet — induce a fault before diagnosing")
         state.root_cause = rca.diagnose(state.evidence or {})
         self._emit(
             state, "diagnosed", state.root_cause.explain(state.explain_mode),
@@ -155,7 +161,7 @@ class Orchestrator:
     def build_plan(self, run_id: str) -> RunState:
         state = self.get(run_id)
         if state.root_cause is None:
-            raise RuntimeError("diagnose before planning")
+            raise StepError("diagnose before planning")
         state.fix_plan = planner.plan_for(state.root_cause)
         if state.fix_plan is None:
             self._emit(state, "diagnosed", "I don't have a canned fix for this one yet.")
@@ -171,7 +177,7 @@ class Orchestrator:
             self._emit(state, "plan_ready", f"Understood, holding off. {note}".strip())
             return state
         if state.fix_plan is None:
-            raise RuntimeError("no fix plan to approve")
+            raise StepError("no fix plan to approve — diagnose the failure first")
 
         state.patch_result = patcher.apply(state.fix_plan)
         verification = runner.verify(run_id, state.fault_id or "")

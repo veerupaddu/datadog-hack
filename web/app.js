@@ -7,8 +7,14 @@ async function api(path, options = {}) {
     ...options,
   });
   if (!res.ok) {
-    const detail = await res.text();
-    say(`Request failed: ${detail}`, "bad");
+    const body = await res.text();
+    let detail = body;
+    try {
+      detail = JSON.parse(body).detail || body;
+    } catch (err) {
+      /* non-JSON error body */
+    }
+    say(detail, "bad");
     throw new Error(detail);
   }
   return res.json();
@@ -73,8 +79,22 @@ function renderOutcome(runState) {
     (runState.summary || "");
 }
 
+function resetCard(id, text) {
+  el(id).className = "card muted";
+  el(id).textContent = text;
+}
+
+function setModeButtons(mode) {
+  state.mode = mode;
+  document
+    .querySelectorAll("button.mode")
+    .forEach((b) => b.classList.toggle("active", b.dataset.mode === mode));
+}
+
 function render(runState) {
+  if (state.runId && runState.run_id !== state.runId) return;
   state.runId = runState.run_id;
+  if (runState.explain_mode) setModeButtons(runState.explain_mode);
   el("run-id").textContent = runState.run_id;
   setStep(runState.step);
   renderRootCause(runState.root_cause);
@@ -92,6 +112,7 @@ function connectEvents() {
   const ws = new WebSocket(`${proto}://${location.host}/ws/events`);
   ws.onmessage = (msg) => {
     const event = JSON.parse(msg.data);
+    if (state.runId && event.run_id && event.run_id !== state.runId) return;
     timelineEntry(event);
     say(event.message);
     if (state.runId) api(`/api/run/state?run_id=${state.runId}`).then(render).catch(() => {});
@@ -137,7 +158,14 @@ async function init() {
   connectEvents();
 }
 
-el("btn-start").onclick = async () => render(await post("/api/run/start", { scenario: "pricing" }));
+el("btn-start").onclick = async () => {
+  state.runId = null;
+  resetCard("root-cause", "Nothing diagnosed yet.");
+  resetCard("fix-plan", "No plan yet.");
+  resetCard("outcome", "Nothing shipped yet.");
+  setModeButtons("default");
+  render(await post("/api/run/start", { scenario: "pricing" }));
+};
 el("btn-induce").onclick = async () =>
   render(await post("/api/run/induce", { run_id: state.runId, fault: el("fault").value }));
 el("btn-logs").onclick = async () => {
@@ -154,15 +182,15 @@ el("btn-ack-yes").onclick = () =>
 el("btn-ack-no").onclick = async () => {
   const res = await post("/api/voice/ack", { run_id: state.runId, understood: false, topic: "root cause" });
   if (res.explanation) {
-    state.mode = "eli5";
+    setModeButtons("eli5");
     say(res.explanation);
+    render(await api(`/api/run/state?run_id=${state.runId}`));
   }
 };
 
 document.querySelectorAll("button.mode").forEach((btn) => {
   btn.onclick = async () => {
-    state.mode = btn.dataset.mode;
-    document.querySelectorAll("button.mode").forEach((b) => b.classList.toggle("active", b === btn));
+    setModeButtons(btn.dataset.mode);
     if (!state.runId) return;
     const res = await post("/api/voice/mode", { run_id: state.runId, mode: state.mode });
     if (res.explanation) say(res.explanation);
