@@ -110,6 +110,7 @@ function renderOutcome(runState) {
   el("outcome").className = "card";
   el("outcome").innerHTML =
     (pr.url ? `PR (${pr.mode}): <a href="${pr.url}" target="_blank" rel="noreferrer">${pr.url}</a><br/>` : "") +
+    (pr.error ? `<span class="log-error">PR step: ${escapeHtml(pr.error)}</span><br/>` : "") +
     (runState.verify_status ? `Replay after fix: <span class="ok">${runState.verify_status}</span><br/>` : "") +
     (runState.doc_path ? `Doc: <code>${runState.doc_path}</code><br/><br/>` : "") +
     (runState.summary || "");
