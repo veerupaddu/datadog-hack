@@ -54,7 +54,8 @@ Runs all 8 steps headless and prints the PR link + doc summary. Useful for CI sm
 |---------|-----|
 | Voice button says "mock mode" | `ELEVENLABS_API_KEY` / `ELEVENLABS_AGENT_ID` not set |
 | Agent tools 404 | Tunnel URL stale — re-run `cloudflared` and update the tool base URL |
-| PR step returns a fake link | `DEVPROD_ENABLE_PR` not `1`, or no git remote configured |
+| PR step returns a fake `example.invalid` link | `DEVPROD_ENABLE_PR=0` in `.env` (server reads it at startup) |
+| PR step shows a compare link instead of a PR | `gh` CLI missing or not logged in — run `gh auth login` |
 | Patch step fails | `git status` in the repo is dirty on `src/devprod/sample_app/` |
 | Re-running the same fault does nothing | The previous approval already fixed it — `git checkout -- src/devprod/sample_app/pricing.py` |
 | Nothing is spoken in mock mode | The browser has no speech-synthesis voices installed; the transcript still shows every line |

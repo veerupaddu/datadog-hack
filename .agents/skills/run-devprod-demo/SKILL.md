@@ -20,7 +20,7 @@ python -m devprod.cli demo --fault divide_by_zero_discount
 python -m pytest -q
 ```
 
-Expect the timeline to reach `summarized`, a PR url (dry-run unless `DEVPROD_ENABLE_PR=1`)
+Expect the timeline to reach `summarized`, a real PR url (fake `example.invalid` link when `DEVPROD_ENABLE_PR=0`)
 and a doc under `documentation/incidents/`.
 
 ## Browser demo

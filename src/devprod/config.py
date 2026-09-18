@@ -26,7 +26,7 @@ class Settings:
     elevenlabs_agent_id: str | None = field(
         default_factory=lambda: os.getenv("ELEVENLABS_AGENT_ID")
     )
-    enable_pr: bool = field(default_factory=lambda: _flag("DEVPROD_ENABLE_PR"))
+    enable_pr: bool = field(default_factory=lambda: _flag("DEVPROD_ENABLE_PR", default=True))
     pr_base_branch: str = field(default_factory=lambda: os.getenv("DEVPROD_PR_BASE", ""))
     repo_root: Path = REPO_ROOT
     logs_dir: Path = REPO_ROOT / "var" / "logs"
