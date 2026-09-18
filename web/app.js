@@ -201,7 +201,7 @@ document.querySelectorAll("button.mode").forEach((btn) => {
     const res = await post("/api/voice/mode", { run_id: state.runId, mode: state.mode });
     if (res.explanation) say(res.explanation);
     render(await api(`/api/run/state?run_id=${state.runId}`));
-  };
+  });
 });
 
 init();
