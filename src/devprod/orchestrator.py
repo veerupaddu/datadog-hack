@@ -20,11 +20,15 @@ STEPS = [
 Listener = Callable[[dict], None]
 
 
+class StepError(RuntimeError):
+    """A step was requested before the run reached the state it needs."""
+
+
 @dataclass
 class RunState:
     run_id: str
     step: str = "idle"
-    explain_mode: str = "default"
+    explain_mode: str = "researcher"
     fault_id: str | None = None
     baseline: dict | None = None
     failing_status: int | None = None
@@ -50,6 +54,7 @@ class RunState:
             "baseline": self.baseline,
             "failing_status": self.failing_status,
             "verify_status": self.verify_status,
+            "evidence": self.evidence,
             "root_cause": self.root_cause.to_dict() if self.root_cause else None,
             "fix_plan": self.fix_plan.to_dict() if self.fix_plan else None,
             "patch_result": self.patch_result,
@@ -144,6 +149,8 @@ class Orchestrator:
         state = self.get(run_id)
         if state.evidence is None:
             self.collect(run_id)
+        if not (state.evidence or {}).get("error_count"):
+            raise StepError("nothing has failed yet — induce a fault before diagnosing")
         state.root_cause = rca.diagnose(state.evidence or {})
         self._emit(
             state, "diagnosed", state.root_cause.explain(state.explain_mode),
@@ -155,7 +162,7 @@ class Orchestrator:
     def build_plan(self, run_id: str) -> RunState:
         state = self.get(run_id)
         if state.root_cause is None:
-            raise RuntimeError("diagnose before planning")
+            raise StepError("diagnose before planning")
         state.fix_plan = planner.plan_for(state.root_cause)
         if state.fix_plan is None:
             self._emit(state, "diagnosed", "I don't have a canned fix for this one yet.")
@@ -171,7 +178,7 @@ class Orchestrator:
             self._emit(state, "plan_ready", f"Understood, holding off. {note}".strip())
             return state
         if state.fix_plan is None:
-            raise RuntimeError("no fix plan to approve")
+            raise StepError("no fix plan to approve — diagnose the failure first")
 
         state.patch_result = patcher.apply(state.fix_plan)
         verification = runner.verify(run_id, state.fault_id or "")
@@ -200,13 +207,13 @@ class Orchestrator:
         return state
 
     # -- conversation -----------------------------------------------------
-    def set_mode(self, run_id: str, mode: str) -> dict:
+    def explain_again(self, run_id: str) -> dict:
+        """Re-state the current root cause; the agent has a single researcher register."""
         state = self.get(run_id)
-        state.explain_mode = mode
-        explanation = state.root_cause.explain(mode) if state.root_cause else ""
-        self._emit(state, state.step, f"Switching to {mode} mode.", explain_mode=mode,
+        explanation = state.root_cause.explain() if state.root_cause else ""
+        self._emit(state, state.step, explanation or "Nothing diagnosed yet.",
                    explanation=explanation)
-        return {"mode": mode, "explanation": explanation}
+        return {"mode": state.explain_mode, "explanation": explanation}
 
     def acknowledge(self, run_id: str, understood: bool, topic: str = "") -> dict:
         state = self.get(run_id)
@@ -216,8 +223,8 @@ class Orchestrator:
             "topic": topic,
         }
         state.acknowledgements.append(ack)
-        if not understood and state.explain_mode != "eli5":
-            return {"ack": ack, **self.set_mode(run_id, "eli5")}
+        if not understood:
+            return {"ack": ack, **self.explain_again(run_id)}
         self._emit(state, state.step, "Comfort check recorded.", ack=ack)
         return {"ack": ack}
 

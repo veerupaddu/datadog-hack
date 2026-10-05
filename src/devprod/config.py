@@ -6,14 +6,14 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
 try:  # optional dependency, the app works without it
     from dotenv import load_dotenv
 
-    load_dotenv()
+    load_dotenv(REPO_ROOT / ".env")
 except Exception:  # pragma: no cover
     pass
-
-REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _flag(name: str, default: bool = False) -> bool:
@@ -26,8 +26,8 @@ class Settings:
     elevenlabs_agent_id: str | None = field(
         default_factory=lambda: os.getenv("ELEVENLABS_AGENT_ID")
     )
-    enable_pr: bool = field(default_factory=lambda: _flag("DEVPROD_ENABLE_PR"))
-    pr_base_branch: str = field(default_factory=lambda: os.getenv("DEVPROD_PR_BASE", "main"))
+    enable_pr: bool = field(default_factory=lambda: _flag("DEVPROD_ENABLE_PR", default=True))
+    pr_base_branch: str = field(default_factory=lambda: os.getenv("DEVPROD_PR_BASE", ""))
     repo_root: Path = REPO_ROOT
     logs_dir: Path = REPO_ROOT / "var" / "logs"
     docs_dir: Path = REPO_ROOT / "documentation" / "incidents"

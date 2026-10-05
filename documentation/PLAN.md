@@ -35,17 +35,14 @@ The ElevenLabs agent is present for the whole run, not just step 5:
 - **Event narration** — every orchestrator state transition is pushed to the browser over
   `/ws/events`; the UI forwards it to the agent as contextual updates, so the agent
   narrates "I'm reproducing the failure now…", "I have the stack trace…".
-- **Explain modes** — `voice/prompts.py` defines three personas the developer can switch
-  to mid-call by simply asking:
-  - `default` — concise senior engineer.
-  - `eli5` — plain language, no jargon, analogies, one idea per sentence.
-  - `researcher` — deeper: related code paths, references, trade-offs, what else could break.
-  The agent calls the `set_explain_mode` tool and re-explains the current step in that register.
-- **Comfort check** — after each major step the agent asks "does that make sense, or should
-  I go simpler?" and only advances when the developer confirms (`confirm_understanding` tool).
-- **Lost-developer shortcut** — `confirm_understanding(understood=false)` automatically flips
-  the run into `eli5` and returns the re-explanation, so neither the agent nor the "I'm lost"
-  button in the UI can leave the developer behind.
+- **One register** — `voice/prompts.py` defines a single researcher persona: related code
+  paths, invariants, trade-offs, what else could break for the same reason.
+- **Call topic** — the `topic` dynamic variable passed to the agent is always the run's error
+  logs (count plus the newest error type and message), so the first message has real evidence.
+- **Comfort check** — after each major step the agent asks "does that land?" and only advances
+  when the developer confirms (`confirm_understanding` tool).
+- **Lost-developer shortcut** — `confirm_understanding(understood=false)` re-explains the same
+  root cause at the same depth with a concrete example, which the "I'm lost" button also does.
 
 ## Agent server tools (backend endpoints the ElevenLabs agent may call)
 
@@ -58,7 +55,7 @@ The ElevenLabs agent is present for the whole run, not just step 5:
 | `get_fix_plan` | `GET /api/run/fix-plan` | Return the proposed fix with a diff preview |
 | `approve_fix` | `POST /api/run/approve` | Apply patch, run tests, open PR |
 | `get_docs` | `GET /api/run/docs` | Return the generated doc + summary |
-| `set_explain_mode` | `POST /api/voice/mode` | Switch default / eli5 / researcher |
+| `explain_again` | `POST /api/voice/explain-again` | Re-explain the current root cause |
 | `confirm_understanding` | `POST /api/voice/ack` | Record the comfort check |
 
 All tools are also callable from the UI buttons, so the demo works with or without audio.

@@ -14,7 +14,6 @@ def demo(fault: str, approve: bool = True) -> dict:
     orchestrator.induce(run_id, fault)
     orchestrator.collect(run_id)
     orchestrator.diagnose(run_id)
-    orchestrator.set_mode(run_id, "eli5")
     orchestrator.acknowledge(run_id, understood=True, topic="root cause")
     if approve:
         orchestrator.approve(run_id, approved=True, note="cli demo")
