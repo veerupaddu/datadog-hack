@@ -5,13 +5,13 @@ from __future__ import annotations
 import asyncio
 import json
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from .config import settings
-from .orchestrator import orchestrator
+from .orchestrator import StepError, orchestrator
 from .simulator import faults
 from .voice import elevenlabs_client
 
@@ -40,11 +40,6 @@ class ApproveBody(BaseModel):
     note: str = ""
 
 
-class ModeBody(BaseModel):
-    run_id: str
-    mode: str
-
-
 class AckBody(BaseModel):
     run_id: str
     understood: bool
@@ -58,9 +53,18 @@ def _state(run_id: str):
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
+@app.exception_handler(StepError)
+def _step_error(request: Request, exc: StepError) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": str(exc)})
+
+
 @app.get("/api/faults")
 def list_faults() -> dict:
-    return {"faults": faults.catalog(), "voice_mode": settings.voice_mode}
+    return {
+        "faults": faults.catalog(),
+        "voice_mode": settings.voice_mode,
+        "pr_mode": "real" if settings.enable_pr else "dry-run",
+    }
 
 
 @app.post("/api/run/start")
@@ -124,10 +128,10 @@ def voice_session(body: RunBody) -> dict:
     return elevenlabs_client.session_payload(body.run_id, state.step, state.explain_mode)
 
 
-@app.post("/api/voice/mode")
-def voice_mode(body: ModeBody) -> dict:
+@app.post("/api/voice/explain-again")
+def voice_explain_again(body: RunBody) -> dict:
     _state(body.run_id)
-    return orchestrator.set_mode(body.run_id, body.mode)
+    return orchestrator.explain_again(body.run_id)
 
 
 @app.post("/api/voice/ack")

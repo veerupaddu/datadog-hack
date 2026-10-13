@@ -19,6 +19,19 @@ def collect(run_id: str) -> dict:
     }
 
 
+def topic(evidence: dict) -> str:
+    """The `topic` dynamic variable the agent opens the call with: the error logs."""
+    if not evidence.get("error_count"):
+        latest_note = "no errors captured yet" if evidence.get("entry_count") else "no logs yet"
+        return f"the error logs for run {evidence.get('run_id', 'unknown')} ({latest_note})"
+    latest = evidence.get("latest_error") or {}
+    return (
+        f"the error logs for run {evidence.get('run_id', 'unknown')}: "
+        f"{evidence['error_count']} error lines, newest is "
+        f"{latest.get('error_type', 'an error')} — {latest.get('error', 'no message')}"
+    )
+
+
 def spoken_summary(evidence: dict) -> str:
     """One sentence the agent can say while the logs stream in."""
     if not evidence["error_count"]:

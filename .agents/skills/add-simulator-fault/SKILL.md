@@ -26,8 +26,8 @@ Four files change, in this order.
 ```
 
 3. **Teach the analyser** — add a `KNOWN_CAUSES["MyError"]` entry in
-   `src/devprod/analysis/rca.py` with all three registers: `default`, `eli5` (analogy, no
-   jargon), `researcher` (other reachable paths, trade-offs, what else breaks).
+   `src/devprod/analysis/rca.py` with a `headline` and the single `researcher` explanation
+   (other reachable paths, trade-offs, what else breaks).
 
 4. **Write the fix plan** — add `PLANS["MyError"]` in `src/devprod/fix/planner.py` with a
    `Patch(old=..., new=...)` whose `old` string matches the source byte for byte, plus

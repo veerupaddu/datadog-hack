@@ -21,8 +21,12 @@ Injected per call by the browser from `POST /api/voice/session`:
 | `run_id` | current simulator run |
 | `developer_name` | who is on the call |
 | `service_name` | the dummy app under test |
-| `explain_mode` | `default` \| `eli5` \| `researcher` |
+| `explain_mode` | always `researcher` (the only register) |
 | `current_step` | orchestrator step at call start |
+| `topic` | the run's error logs — count plus the newest error type and message |
+
+Every variable the agent's **first message** references must be present in this payload,
+otherwise the call fails with `Missing required dynamic variables in first message`.
 
 ## 3. Server tools
 
@@ -37,7 +41,7 @@ diagnose               POST {base}/api/run/diagnose     body: {run_id}
 get_fix_plan           GET  {base}/api/run/fix-plan?run_id=
 approve_fix            POST {base}/api/run/approve      body: {run_id, approved, note}
 get_docs               GET  {base}/api/run/docs?run_id=
-set_explain_mode       POST {base}/api/voice/mode       body: {run_id, mode}
+explain_again          POST {base}/api/voice/explain-again  body: {run_id}
 confirm_understanding   POST {base}/api/voice/ack        body: {run_id, understood, topic}
 ```
 
@@ -51,9 +55,8 @@ python -m devprod.voice.agent_tools --print-schema
 
 - Never advance a step without saying what you are about to do.
 - After every explanation, ask a short comfort check; call `confirm_understanding`.
-- If the developer says "I don't get it" / "simpler" → call `set_explain_mode` with `eli5`
-  and re-explain the same step with an analogy, no jargon, ≤2 sentences per idea.
-- If asked "why" / "what else could break" → `set_explain_mode` with `researcher`.
+- One register only, researcher. If the developer is lost, call `explain_again` and
+  re-explain the same step at the same depth with a concrete example — never hand-wave.
 - Require an explicit yes before calling `approve_fix`.
 - Read the PR link digit-by-digit style (slowly) and then the doc summary.
 
